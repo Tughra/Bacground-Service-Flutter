@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:background_service/page_one/page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -15,15 +16,25 @@ void onStart(ServiceInstance service){
       service.stopSelf();
     }
   });
-  audioPlayer.onPlayerStateChanged.listen((event) {
-    debugPrint("<<<<<<<<<< onPlayerStateChanged >>>>>>>>>>");
-    Map<String,dynamic>dataToSend={
-      'count':count++,
-    };
-    service.invoke("coming",dataToSend);
-    debugPrint("<<<<<<<<<< Data Sent : $dataToSend >>>>>>>>>>");
-    audioPlayer.play(UrlSource(url));
+  audioPlayer.onPlayerComplete.listen((event) {
+    debugPrint("<<<<<<<<<< onPlayerComplete >>>>>>>>>>");
+     Map<String,dynamic>dataToSend={
+       'count':count++,
+     };
+     service.invoke("coming",dataToSend);
+     debugPrint("<<<<<<<<<< Data Sent : $dataToSend >>>>>>>>>>");
+     audioPlayer.play(UrlSource(url));
   });
+  /*
+     audioPlayer.onPlayerComplete.listen((duration) async{
+     debugPrint("<<<<<<<<<< onPlayerStateChanged >>>>>>>>>>");
+     debugPrint("<<<<<<<<<< event sate :>>>>>>>>>>");
+
+       setState(()=>playCount++);
+      await audioPlayer.play(_urlSource);
+
+   });
+   */
   audioPlayer.play(UrlSource(url));
 }
 bool onIosBackground(ServiceInstance service) {
@@ -106,20 +117,32 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final audioPlayer = AudioPlayer();
   int playCount = 0;
   bool isRunning=true;
+  final Source _urlSource=UrlSource("https://www.mediacollege.com/downloads/sound-effects/alien/laser-01.wav");
   void _incrementCounter() async{
    var isRunning= await FlutterBackgroundService().isRunning();
    if(isRunning){
      FlutterBackgroundService().invoke('start',{'action' :'stopService'});
    }else{
-     initializeService();
+     initializeBackground();
    }
   }
   @override
   void initState() {
     super.initState();
-    initializeBackground();
+  }
+  void player () async{
+   audioPlayer.onPlayerComplete.listen((duration) async{
+     debugPrint("<<<<<<<<<< onPlayerStateChanged >>>>>>>>>>");
+     debugPrint("<<<<<<<<<< event sate :>>>>>>>>>>");
+
+       setState(()=>playCount++);
+      await audioPlayer.play(_urlSource);
+
+   });
+  await audioPlayer.play(_urlSource);
   }
   void initializeBackground() async{
     debugPrint("initialize");
@@ -173,6 +196,12 @@ class _MyHomePageState extends State<MyHomePage> {
           // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            TextButton(onPressed: (){
+              Navigator.of(context).push(MaterialPageRoute(builder: (context)=>const PageOne()));
+            }, child:  const Text(
+              'Page 1',
+            ),),
+
             const Text(
               'You have pushed the button this many times:',
             ),
