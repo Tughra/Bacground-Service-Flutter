@@ -1,14 +1,20 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:background_service/page_one/page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:geolocator/geolocator.dart';
+
+import 'geo/geo_page.dart';
 void onStart(ServiceInstance service){
   WidgetsFlutterBinding.ensureInitialized();
-  String url =  "https://www.mediacollege.com/downloads/sound-effects/alien/laser-01.wav";
+  String url =  "beep-01.wav";
  // final service = FlutterBackgroundService();
   final audioPlayer = AudioPlayer();
-
+  final GeolocatorPlatform _geolocatorPlatform = GeolocatorPlatform.instance;
+  StreamSubscription<Position>? _positionStreamSubscription;
   int count = 0;
   service.on("start").listen((event) {
     if(event!['action']=='stopService'){
@@ -16,6 +22,38 @@ void onStart(ServiceInstance service){
       service.stopSelf();
     }
   });
+  Map<String,dynamic>dataToSend={
+    'count':0.1,
+  };
+  service.invoke("coming",dataToSend);
+  if (_positionStreamSubscription == null) {
+    final positionStream = _geolocatorPlatform.getPositionStream();
+    debugPrint(positionStream.toString());
+    debugPrint("<<<<<<<<<< -------- >>>>>>>>>>");
+    _positionStreamSubscription = positionStream.handleError((error) {
+      _positionStreamSubscription?.cancel();
+      _positionStreamSubscription = null;
+    }).listen((position) {
+      debugPrint("<<<<<<<<<< onPlayerComplete >>>>>>>>>>");
+      Map<String,dynamic>dataToSend={
+        'count':position.latitude,
+      };
+      service.invoke("coming",dataToSend);
+      debugPrint("<<<<<<<<<< Data Sent : $dataToSend >>>>>>>>>>");
+      debugPrint(position.latitude.toStringAsPrecision(7).toString());
+      if(position.latitude.toStringAsPrecision(7)=="36.78881"){
+        audioPlayer.play(AssetSource(url)).then((value) {
+          audioPlayer.onPlayerComplete.listen((event) {
+            audioPlayer.play(AssetSource(url));
+          });
+        });
+      }else{
+        audioPlayer.pause();
+      }
+    });
+    _positionStreamSubscription?.resume();
+  }
+ /*
   audioPlayer.onPlayerComplete.listen((event) {
     debugPrint("<<<<<<<<<< onPlayerComplete >>>>>>>>>>");
      Map<String,dynamic>dataToSend={
@@ -25,6 +63,7 @@ void onStart(ServiceInstance service){
      debugPrint("<<<<<<<<<< Data Sent : $dataToSend >>>>>>>>>>");
      audioPlayer.play(UrlSource(url));
   });
+  */
   /*
      audioPlayer.onPlayerComplete.listen((duration) async{
      debugPrint("<<<<<<<<<< onPlayerStateChanged >>>>>>>>>>");
@@ -35,7 +74,7 @@ void onStart(ServiceInstance service){
 
    });
    */
-  audioPlayer.play(UrlSource(url));
+  audioPlayer.play(AssetSource(url));
 }
 bool onIosBackground(ServiceInstance service) {
   WidgetsFlutterBinding.ensureInitialized();
@@ -118,7 +157,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final audioPlayer = AudioPlayer();
-  int playCount = 0;
+  double playCount = 0;
   bool isRunning=true;
   final Source _urlSource=UrlSource("https://www.mediacollege.com/downloads/sound-effects/alien/laser-01.wav");
   void _incrementCounter() async{
@@ -132,6 +171,22 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    if(isRunning){
+      FlutterBackgroundService().on("coming").listen((event) {
+        debugPrint('initstate>>>>>>>>$event');
+        if(event!.isNotEmpty && event['count'] !=null){
+          setState(() {
+            // This call to setState tells the Flutter framework that something has
+            // changed in this State, which causes it to rerun the build method below
+            // so that the display can reflect the updated values. If we changed
+            // playCount without calling setState(), then the build method would not be
+            // called again, and so nothing would appear to happen.
+            playCount=event['count'] as double;
+          });
+          debugPrint('count from service >>>>>>>> $event');
+        }
+      });
+    }
   }
   void player () async{
    audioPlayer.onPlayerComplete.listen((duration) async{
@@ -156,7 +211,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // so that the display can reflect the updated values. If we changed
           // playCount without calling setState(), then the build method would not be
           // called again, and so nothing would appear to happen.
-          playCount=event['count'] as int;
+          playCount=event['count'] as double;
         });
         debugPrint('count from service >>>>>>>> $event');
       }
@@ -201,7 +256,11 @@ class _MyHomePageState extends State<MyHomePage> {
             }, child:  const Text(
               'Page 1',
             ),),
-
+            TextButton(onPressed: (){
+              Navigator.of(context).push(MaterialPageRoute(builder: (context)=>const GeolocatorWidget()));
+            }, child:  const Text(
+              'Geo Page',
+            ),),
             const Text(
               'You have pushed the button this many times:',
             ),
