@@ -5,6 +5,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import 'send_notification.dart';
+
 void didReceiveNotification  (NotificationResponse notificationResponse) {
   print("------------Tapped Notification----------------");
   switch (notificationResponse.notificationResponseType) {
@@ -34,6 +36,7 @@ void didReceiveNotificationBackground(NotificationResponse notificationResponse)
       break;
     case NotificationResponseType.selectedNotificationAction:
       {
+        sendNotification();
         print("------------Action Tapped Background----------------");
         onNotifications.add(notificationResponse.actionId);
       }
@@ -177,10 +180,11 @@ class LocalNotificationService {
   Future<void> showActionNotification(
       {String? title,
         String? body,
-        required int hashcode,
+        required int id,
+        bool showsUserInterface=true,
         required String? payload,}) async {
     AndroidNotificationDetails androidPlatformChannelSpecifics =
-    const AndroidNotificationDetails(
+      AndroidNotificationDetails(
       "notificationActionChannelId2",
       "notificationActionChannelName",
       channelDescription: "notificationActionChannelDescription",
@@ -189,8 +193,8 @@ class LocalNotificationService {
       //groupKey:"notificationActionChannelName",
       ticker: 'ticker',
       actions: <AndroidNotificationAction>[
-        AndroidNotificationAction('id_1', 'Yardım Al',titleColor: Colors.green,showsUserInterface: true,cancelNotification: true),
-        AndroidNotificationAction('id_2', 'İptal',titleColor: Colors.black),
+        AndroidNotificationAction('id_1', 'Yardım Al',titleColor: Colors.green,showsUserInterface: showsUserInterface,cancelNotification: true),
+        const AndroidNotificationAction('id_2', 'İptal',titleColor: Colors.black),
       ],
     );
 
@@ -202,7 +206,7 @@ class LocalNotificationService {
         iOS: iosPlatformChannelSpecifics,
         android: androidPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
-      hashcode,
+      id,
       title ?? 'plain title',
       body ?? 'plain body',
       platformChannelSpecifics,

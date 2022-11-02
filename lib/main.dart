@@ -27,9 +27,8 @@ void backHand(NotificationResponse response){
     'count': 200,
   });
 }
-void onStart(ServiceInstance service) async{
-  DartPluginRegistrant.ensureInitialized();
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+/*
+ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
   FlutterLocalNotificationsPlugin();
   const AndroidInitializationSettings initializationSettingsAndroid =
   AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -68,6 +67,10 @@ void onStart(ServiceInstance service) async{
     },                        //  callback A 🅰
     onDidReceiveBackgroundNotificationResponse:backHand,    //  callback B 🅱
   );
+ */
+void onStart(ServiceInstance service) async{
+  DartPluginRegistrant.ensureInitialized();
+  LocalNotificationService _localService=LocalNotificationService.instance;
   String url =
       "https://www.mediacollege.com/downloads/sound-effects/alien/laser-01.wav";
   final audioPlayer = AudioPlayer();
@@ -85,20 +88,10 @@ void onStart(ServiceInstance service) async{
           'count': count++,
         };
         service.invoke("coming", dataToSend);
-        await flutterLocalNotificationsPlugin.show(
-          count,
-         'plain title',
-           'plain body',
-          platformChannelSpecifics,
-          payload:  'item x',
-        ).then((value){
-          service.invoke("coming", {
-            'count': 500,
-          });
-        });
+        await _localService.showActionNotification(id: count, payload: "action notification",title: "Title",body: "Body body",showsUserInterface: false);
         audioPlayer.play(UrlSource(url));
         debugPrint("<<<<<<<<<< From Service TO DEVICE : $dataToSend >>>>>>>>>>");
-      });
+      },shakeThresholdGravity:8 );
       return;
     }
     if (event['action'] == 'stopService') {
@@ -344,7 +337,7 @@ class _MyHomePageState extends State<MyHomePage> {
           FloatingActionButton(
             heroTag: "1",
             onPressed:()async{
-             await LocalNotificationService.instance.showActionNotification(hashcode: 1, payload: "Action Payload",title: "deneme",body: "deneme body");
+             await LocalNotificationService.instance.showActionNotification(id: 1, payload: "Action Payload",title: "deneme",body: "deneme body");
             },
             tooltip: 'Increment',
             child: const Icon(Icons.close),
