@@ -9,14 +9,79 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shake/shake.dart';
 
 
+@pragma('vm:entry-point')
+void onStart(ServiceInstance service) async{
+  DartPluginRegistrant.ensureInitialized();
+  LocalNotificationService localService=LocalNotificationService.instance;
+  String url =
+      "https://www.mediacollege.com/downloads/sound-effects/alien/laser-01.wav";
+  final audioPlayer = AudioPlayer();
+  int count = 0;
+  int threshold=4;
+  late ShakeDetector? detector;
+  service.on("start").listen((event) {
+    debugPrint("<<<<<<<<<< Dinlenen : $event >>>>>>>>>>");
+    if (event!['action'] == 'startService') {
+      debugPrint("<<<<<<<<<< From Service : $event >>>>>>>>>>");
+      if (service is AndroidServiceInstance) {
+        service.setAsForegroundService();
+      }
 
+      detector = ShakeDetector.autoStart(onPhoneShake: () async{
+        Map<String, dynamic> dataToSend = {
+          'count': count++,
+        };
+        service.invoke("coming", dataToSend);
+        await localService.showActionNotification(id: 1, payload: "action notification",title: "Sarsıntı",body: "Sarsıntı hissettik. Yardım cağırmamızı ister misiniz?",showsUserInterface: false);
+        audioPlayer.play(UrlSource(url));
+        debugPrint("<<<<<<<<<< From Service TO DEVICE : $dataToSend >>>>>>>>>>");
+      },shakeThresholdGravity:threshold.toDouble());
+
+      return;
+    }
+    if(event.keys.first == 'threshold'){
+      debugPrint("<<<<<<<<<< From Slider : $event >>>>>>>>>>");
+      threshold=event["threshold"] as int;
+      detector?.stopListening();
+      detector=null;
+      detector = ShakeDetector.waitForStart(onPhoneShake: () async{
+        Map<String, dynamic> dataToSend = {
+          'count': count++,
+        };
+        service.invoke("coming", dataToSend);
+        await localService.showActionNotification(id: 1, payload: "action notification",title: "Sarsıntı",body: "Sarsıntı hissettik. Yardım cağırmamızı ister misiniz?",showsUserInterface: false);
+        audioPlayer.play(UrlSource(url));
+        debugPrint("<<<<<<<<<< From Service TO DEVICE : $dataToSend >>>>>>>>>>");
+      },shakeThresholdGravity:threshold.toDouble());
+      detector?.startListening();
+    }
+    if (event['action'] == 'stopService') {
+      debugPrint("<<<<<<<<<< From Service : $event >>>>>>>>>>");
+      service.stopSelf();
+      detector?.stopListening();
+    }
+  });
+
+  /*
+    audioPlayer.onPlayerComplete.listen((event) {
+    debugPrint("<<<<<<<<<< onPlayerComplete >>>>>>>>>>");
+     Map<String,dynamic>dataToSend={
+       'count':count++,
+     };
+     service.invoke("coming",dataToSend);
+     debugPrint("<<<<<<<<<< Data Sent : $dataToSend >>>>>>>>>>");
+     audioPlayer.play(UrlSource(url));
+  });
+   */
+  audioPlayer.play(UrlSource(url));
+}
 
 const notificationChannelId = 'acn_foreground';
 const notificationActionChannelId = 'acn_action';
 const notificationActionChannelName = 'AcnTurk Korumam';
 const notificationActionChannelDescription = 'Sarsıntı izleme bildirimleri';
 const notificationId = 888;
-
+/*
 @pragma('vm:entry-point')
 void backHand(NotificationResponse response){
   final service = FlutterBackgroundService();
@@ -27,7 +92,6 @@ void backHand(NotificationResponse response){
     'count': 200,
   });
 }
-/*
  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
   FlutterLocalNotificationsPlugin();
   const AndroidInitializationSettings initializationSettingsAndroid =
@@ -68,52 +132,6 @@ void backHand(NotificationResponse response){
     onDidReceiveBackgroundNotificationResponse:backHand,    //  callback B 🅱
   );
  */
-void onStart(ServiceInstance service) async{
-  DartPluginRegistrant.ensureInitialized();
-  LocalNotificationService _localService=LocalNotificationService.instance;
-  String url =
-      "https://www.mediacollege.com/downloads/sound-effects/alien/laser-01.wav";
-  final audioPlayer = AudioPlayer();
-  int count = 0;
-  late final ShakeDetector? detector;
-  service.on("start").listen((event) {
-    debugPrint("<<<<<<<<<< Dinlenen : $event >>>>>>>>>>");
-    if (event!['action'] == 'startService') {
-      debugPrint("<<<<<<<<<< From Service : $event >>>>>>>>>>");
-      if (service is AndroidServiceInstance) {
-        service.setAsForegroundService();
-      }
-      detector = ShakeDetector.autoStart(onPhoneShake: () async{
-        Map<String, dynamic> dataToSend = {
-          'count': count++,
-        };
-        service.invoke("coming", dataToSend);
-        await _localService.showActionNotification(id: count, payload: "action notification",title: "Title",body: "Body body",showsUserInterface: false);
-        audioPlayer.play(UrlSource(url));
-        debugPrint("<<<<<<<<<< From Service TO DEVICE : $dataToSend >>>>>>>>>>");
-      },shakeThresholdGravity:8 );
-      return;
-    }
-    if (event['action'] == 'stopService') {
-      debugPrint("<<<<<<<<<< From Service : $event >>>>>>>>>>");
-      service.stopSelf();
-      detector?.stopListening();
-    }
-  });
-
-  /*
-    audioPlayer.onPlayerComplete.listen((event) {
-    debugPrint("<<<<<<<<<< onPlayerComplete >>>>>>>>>>");
-     Map<String,dynamic>dataToSend={
-       'count':count++,
-     };
-     service.invoke("coming",dataToSend);
-     debugPrint("<<<<<<<<<< Data Sent : $dataToSend >>>>>>>>>>");
-     audioPlayer.play(UrlSource(url));
-  });
-   */
-  audioPlayer.play(UrlSource(url));
-}
 
 bool onIosBackground(ServiceInstance service) {
   WidgetsFlutterBinding.ensureInitialized();
@@ -123,6 +141,10 @@ bool onIosBackground(ServiceInstance service) {
 }
 
 Future<void> initializeService() async {
+/*
+  AndroidInitializationSettings initializationSettingsAndroid =
+  const AndroidInitializationSettings('@mipmap/ic_launcher');
+ */
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
     notificationChannelId, // id
     'AcnTurk Güvendeyim', // title
@@ -160,10 +182,8 @@ Future<void> initializeService() async {
     iosConfiguration: IosConfiguration(
       // auto start service
       autoStart: false,
-
       // this will be executed when app is in foreground in separated isolate
       onForeground: onStart,
-
       // you have to enable background fetch capability on xcode project
       onBackground: onIosBackground,
     ),
@@ -184,11 +204,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Sarsıntı Algılama',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Sarsıntı Algılama Demo'),
     );
   }
 }
@@ -209,20 +230,26 @@ class _MyHomePageState extends State<MyHomePage> {
   int playCount = 0;
   bool isRunning=false;
   String actionResponse="";
+  double _currentValue=4;
   late final FlutterBackgroundService service;
   //final Source _urlSource=UrlSource("https://www.mediacollege.com/downloads/sound-effects/alien/laser-01.wav");
   void _startOrStopService() async {
     isRunning=await service.isRunning();
     if (isRunning) {
-      Future.delayed(const Duration(seconds: 2),(){
+     await Future.delayed(const Duration(seconds: 2),(){
         FlutterBackgroundService().invoke('start', {'action': 'stopService'});
       });
+      isRunning=false;
       print('Service running and will be stopped');
     } else {
-      service.startService();
+      await service.startService();
       await initializeBackground();
+      isRunning=await service.isRunning();
       print('Service will be starting');
     }
+    setState(() {
+
+    });
   }
 
   @override
@@ -295,34 +322,67 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(actionResponse,style: const TextStyle(color: Colors.blueAccent,fontSize: 40),),
-            TextButton(
-              onPressed: () {
-                LocalNotificationService.instance.showNotification(hashcode:1, payload: "123213");
-                //FlutterBackgroundService().invoke('start', {'action': 'startService'});
-                //Navigator.of(context).push(MaterialPageRoute(builder: (context)=>const PageOne()));
-              },
+            //Text(actionResponse,style: const TextStyle(color: Colors.blueAccent,fontSize: 40),),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 48.0,right: 10,left: 10),
               child: const Text(
-                'Page 1',
+                'Önce Servisi Başlatın Ardından Sarsıntı Hassasiyetini Ayarlayın',textAlign: TextAlign.center,
               ),
             ),
+            Column(
+              children: [
+                Slider(
+          value: _currentValue,
+          max: 8,
+          divisions: 8,
+         activeColor: Colors.red,
+         inactiveColor: Colors.white,
+         /*
+          onChangeStart: (_){
+                if(isRunning==false)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Önce Servisi Aktif Ediniz")));
+          },
+          */
+          label: "Değer : $_currentValue",
+          onChanged: (double value) {
+                  if(value>=1) {
+                    setState(() {
+                      _currentValue = value;
+                    });
+                    service.invoke("start",{"threshold":_currentValue});
+                  }
+
+          },
+        ),
+                 Text(
+                  'Hassasiyet:  $_currentValue',
+                ),
+              ],
+            ),
+            const SizedBox(height: 20,),
             const Text(
-              'You have pushed the button this many times:',
+              'Hissedilen sarsıntı sayısı :',
             ),
             Text(
               '$playCount',
               style: Theme.of(context).textTheme.headline4,
             ),
+            MaterialButton(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),onPressed: _startOrStopService,padding: const EdgeInsets.symmetric(vertical: 10,horizontal: 50),color: Colors.red.shade700,child: Text(isRunning?"Servisi Kapat":"Servisi Aç",style:const TextStyle(fontSize: 16,color: Colors.white) ,),
+            ),
+            SizedBox(height: 20,),
+            TextButton(onPressed: (){
+              LocalNotificationService.instance.showActionNotification(id: 1, payload: "action notification",title: "Sarsıntı",body: "Sarsıntı hissettik. Yardım cağırmamızı ister misiniz?",showsUserInterface: false);
+            }, child: Text("Dene"))
           ],
         ),
-      ),
+      ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+/*
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -343,7 +403,5 @@ class _MyHomePageState extends State<MyHomePage> {
             child: const Icon(Icons.close),
           ),
         ],
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
-  }
-}
+      )
+ */

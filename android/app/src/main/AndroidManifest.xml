@@ -1,7 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.background.example.background_service">
+    <uses-permission android:name="android.permission.INTERNET" />
    <application
-        android:label="background_service"
+        android:label="Sarsıntı Algılama"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
