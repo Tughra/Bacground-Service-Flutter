@@ -5,8 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shake/shake.dart';
-import 'package:shake_detector/page_one/local_notification_service.dart';
-import 'package:shake_detector/page_one/local_storage.dart';
+import 'package:shake_detector/utils/admob_helper.dart';
+import 'package:shake_detector/utils/local_notification_service.dart';
+import 'package:shake_detector/utils/local_storage.dart';
 
 
 @pragma('vm:entry-point')
@@ -118,6 +119,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   LocalStorage.initPrefs();
   LocalNotificationService.instance;
+  AdmobHelper.instance;
   runApp(const MyApp());
 }
 
@@ -164,6 +166,7 @@ class _MyHomePageState extends State<MyHomePage> {
       });
       isRunning=false;
       LocalStorage.setInt('shakeCount', 0);
+      AdmobHelper.instance.showRewardedAd();
       print('Service running and will be stopped');
     } else {
       await service.startService();
@@ -245,11 +248,12 @@ class _MyHomePageState extends State<MyHomePage> {
               '$shakeCount',
               style: Theme.of(context).textTheme.headline4,
             ),
-            MaterialButton(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),onPressed: _startOrStopService,padding: const EdgeInsets.symmetric(vertical: 10,horizontal: 50),color: Colors.red.shade700,child: Text(isRunning?"Servisi Kapat":"Servisi Aç",style:const TextStyle(fontSize: 16,color: Colors.white) ,),
+            MaterialButton(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),onPressed:_startOrStopService,padding: const EdgeInsets.symmetric(vertical: 10,horizontal: 50),color: Colors.red.shade700,child: Text(isRunning?"Servisi Kapat":"Servisi Aç",style:const TextStyle(fontSize: 16,color: Colors.white) ,),
             ),
             const SizedBox(height: 20,),
             TextButton(onPressed: (){
-              LocalNotificationService.instance.showActionNotification(id: 1, payload: "action notification",title: "Sarsıntı",body: "Sarsıntı hissettik. Yardım cağırmamızı ister misiniz?",showsUserInterface: false);
+              AdmobHelper.instance.showRewardedAd();
+             // LocalNotificationService.instance.showActionNotification(id: 1, payload: "action notification",title: "Sarsıntı",body: "Sarsıntı hissettik. Yardım cağırmamızı ister misiniz?",showsUserInterface: false);
             }, child: const Text("Dene"))
           ],
         ),
@@ -282,7 +286,3 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       )0,175,183
  */
-
-int? topla({required int deger1,required int deger2}){
-  return deger1+deger2;
-}
